@@ -1,5 +1,3 @@
-# 01_istat_od_download.py
-
 """
 Script name: 01_istat_bdap_od_download.py
 Author: R. Nai

@@ -1,3 +1,6 @@
+"""
+ssl_adapter.py
+"""
 from requests.adapters import HTTPAdapter
 from urllib3.util.ssl_ import create_urllib3_context
 

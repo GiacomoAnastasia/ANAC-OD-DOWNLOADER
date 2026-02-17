@@ -1,7 +1,5 @@
-# 01_anac_opendata.py
-
 """
-Script name: 01_anac_od_download.py
+01_anac_od_download.py
 Author: R. Nai
 Creation date: 10/01/2024
 Last modified: 01/03/2024 (added class SSLAdapter)
@@ -10,10 +8,12 @@ https://dati.anticorruzione.it/opendata/download/dataset/cig-AAAA/filesystem/cig
 (ex. https://dati.anticorruzione.it/opendata/download/dataset/cig-2021/filesystem/cig_csv_2021_01.zip)
 
 [2025-06-12]: updated with logging functionalities.
+[2025-02-17]: updated merge_csv_files function to include a summary of the merge results and added logging.
 """
 
 ### IMPORT ###
 import logging
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -29,10 +29,12 @@ year_start = int(yaml_config["YEAR_START_DOWNLOAD"])
 year_end = int(yaml_config["YEAR_END_DOWNLOAD"]) 
 url_statics_file = str(yaml_config["ANAC_STATIC_URLS_JSON"])
 url_dynamic_file = str(yaml_config["ANAC_DYNAMIC_URLS_JSON"])
+prefixes_json_file = str(yaml_config["ANAC_PREFIXES_JSON"])
 cig_prefix = str(yaml_config["CIG_PREFIX"])
 anac_other_dataset_names = yaml_config.get("ANAC_OTHER_DATASET_NAMES", [])
 
-MERGE_DO = False  # whether to merge the CSV files after download and unzip or not
+merge_do = bool(yaml_config.get("MERGE_DO", False))  # whether to merge the CSV files after download and unzip or not
+unzip_do = bool(yaml_config.get("UNZIP_DO", False))  # whether to unzip the downloaded files or not
 
 # OUTPUT
 merge_file = f"bando_cig_{year_start}-{year_end}.csv" # final file with all the tenders following years
@@ -75,44 +77,73 @@ def url_generate(year_start: int, year_end: int, list_months: list, url_base: li
                 list_url.append(url)
     return list_url
 
-def merge_csv_files(source_dir: str, output_dir:str, prefix_name:str, output_file: str) -> int:
+def merge_csv_files(source_dir: str, output_dir:str, prefixes: list) -> dict:
     """
-    Merges all CSV files with a specific prefix name in the specified directory into a single CSV file (useful for "bando CIG" table).
+    Merges CSV files in the source directory by dataset prefix into one merged file per prefix.
     
     Parameters:
         source_dir (str): the path to the directory containing the CSV files to be merged.
         output_dir (str): the path to the output CSV directory where the merged content will be stored.
-        prefix_name (str): the prefix of files to be merged.
-        output_file (str): the path to the output CSV file where the merged content will be stored.
+        prefixes (list): list of dataset prefixes to use for grouping and merging.
 
     Returns:
-        int: number of lines in the merged CSV file
+        dict: merge summary by prefix.
     """
 
     source_path = Path(source_dir)
-    output_path = Path(output_dir) / output_file
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    def normalize_prefix(file_stem: str) -> str:
+        normalized = re.sub(r'^\d{8}-', '', file_stem)
+        normalized = re.sub(r'_\d{4}_\d{2}$', '', normalized)
+        return normalized
 
     # Ensure the source directory exists
     if not source_path.is_dir():
         print(f"WARNING! Source directory {source_dir} does not exist.")
-        return 0
+        return {}
 
-    # Open the output file in write mode
-    with output_path.open(mode='w') as outfile:
-        for csv_file in source_path.glob(f'{prefix_name}*.csv'):
-            with csv_file.open(mode='r') as infile:
-                # Read the content of the current CSV file and write it to the output file
-                outfile.write(infile.read())
-            print(f"Merged: {csv_file}")
+    if not prefixes:
+        print("WARNING! No prefixes provided for merging.")
+        return {}
 
-    print(f"All CSV files in '{source_dir}' with file name prefix '{prefix_name}' have been merged into file '{output_file}' in '{output_path}'.\n")
+    all_csv_files = sorted(source_path.glob('*.csv'))
+    merge_result = {}
 
-    # Count the lines in the merged CSV file
+    for prefix_name in prefixes:
+        matched_files = [
+            csv_file for csv_file in all_csv_files
+            if normalize_prefix(csv_file.stem) == prefix_name
+        ]
 
-    with open(output_path, 'r') as file:
-        lines = sum(1 for line in file)
+        if not matched_files:
+            continue
 
-    return lines
+        output_file = f"{prefix_name}.csv"
+        current_output_path = output_path / output_file
+
+        with current_output_path.open(mode='w') as outfile:
+            for csv_file in matched_files:
+                with csv_file.open(mode='r') as infile:
+                    outfile.write(infile.read())
+                print(f"Merged [{prefix_name}]: {csv_file.name}")
+
+        with current_output_path.open(mode='r') as file:
+            lines = sum(1 for _ in file)
+
+        merge_result[prefix_name] = {
+            "output_file": str(current_output_path),
+            "files_merged": len(matched_files),
+            "lines": lines
+        }
+
+        print(
+            f"Prefix '{prefix_name}' merged into '{output_file}' "
+            f"with {len(matched_files)} files and {lines} lines."
+        )
+
+    return merge_result
 
 def print_list_urls(list_urls: list) -> None:
     """
@@ -207,18 +238,45 @@ def main() -> None:
     logger.info(f"Download completed - Results: {dic_result}")
     print()
 
-    print(">> Unzipping files")
-    unzipped_files = url_unzip(anac_download_dir)
-    print("Unzipped files:", len(unzipped_files))
+    if unzip_do == False:
+        print(">> Unzipping skipped as per configuration (UNZIP_DO = False).")
+    else:
+        print(">> Unzipping files")
+        unzipped_files, unzipped_files_error = url_unzip(anac_download_dir)
+        print("Unzipped files:", len(unzipped_files))
+        print("Files with errors during unzipping:", len(unzipped_files_error))
     print()
 
-    if MERGE_DO == False:
+    if merge_do == False:
         print(">> Merging skipped as per configuration (MERGE_DO = False).")
     else:
         print(">> Merging files")
-        print("Prefix for merging:", cig_prefix)
-        lines_csv = merge_csv_files(anac_download_dir, data_dir, cig_prefix, merge_file)
-        print(f"Lines in the merged CSV file '{merge_file}' (with duplicates): {lines_csv}")
+        print(">> Reading merge prefixes from JSON")
+        prefixes = read_urls_from_json(prefixes_json_file, "prefixes")
+
+        if not prefixes:
+            print(f"WARNING! No prefixes found in '{prefixes_json_file}'.")
+            logger.warning(f"No prefixes found in '{prefixes_json_file}'.")
+        else:
+            prefixes_len = len(prefixes)
+            print(f"Prefixes found (num): {prefixes_len}")
+            logger.info(f"Prefixes found for merging: {prefixes_len}")
+            merge_result = merge_csv_files(anac_download_dir, data_dir, prefixes)
+            if not merge_result:
+                print("WARNING! No CSV files matched the provided prefixes.")
+                logger.warning("No CSV files matched the provided prefixes.")
+            else:
+                print("Merge summary by prefix:")
+                for prefix, result in merge_result.items():
+                    print(
+                        f"- {prefix}: files merged={result['files_merged']}, "
+                        f"lines={result['lines']}, output={result['output_file']}"
+                    )
+                    logger.info(
+                        f"- {prefix}: files merged={result['files_merged']}, "
+                        f"lines={result['lines']}, output={result['output_file']}"
+                    )
+                logger.info(f"Merge completed for {len(merge_result)} prefixes.")
         print()
 
     # end

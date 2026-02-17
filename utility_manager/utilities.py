@@ -3,6 +3,7 @@ Utility functions for file handling, downloading, unzipping, and directory manag
 [2024-06-12]: added .gitkeep file to keep empty directories in git in check_and_create_directory.
 [2025-06-12]: updated with logging functionalities.
 [2025-06-20]: updated read_urls_from_json function with 'key' parameter to read specific sections of JSON files.
+[2026-02-17]: added try-except block to handle potential errors in url_unzip.
 """
 
 import json
@@ -162,21 +163,31 @@ def url_unzip(download_dir: str) -> int:
         download_dir (str): the path to the directory containing the .zip files.
 
     Returns:
-        int: number of unzippped files.
+        tuple: A tuple containing two lists:
+            - list_file: List of successfully unzipped files.
+            - list_file_error: List of files that could not be unzipped.
     """
 
+    logger = logging.getLogger(__name__)
     download_path = Path(download_dir)
     unzipped_files = 0
     list_file = [] # List of unzipped files
+    list_file_error = [] # List of files that could not be unzipped
 
     for file_path in download_path.glob("*.zip"):
-        with zipfile.ZipFile(file_path, 'r') as zip_ref:
-            zip_ref.extractall(download_path)
-        list_file.append(file_path)
-        print(f"Unzipped: {file_path}")
-        unzipped_files+=1
+        try:
+            with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                zip_ref.extractall(download_path)
+            list_file.append(file_path)
+            print(f"Unzipped: {file_path}")
+            unzipped_files+=1
+        except zipfile.BadZipFile:
+            print(f"WARNING! Skipping invalid zip file: {file_path.name}")
+            logger.warning(f"Invalid zip file skipped: {file_path}")
+            list_file_error.append(file_path)
+            continue
 
-    return list_file
+    return list_file, list_file_error
 
 def move_files(source_folder: str, file_extension: str, destination_folder: str) -> int:
     """

@@ -53,6 +53,7 @@ This script downloads open data from the ANAC website, extracts them, merges `ci
 Downloads public tender data from the ANAC website and creates a global dataset.
 
 **Functionality:**
+
 - Generates dynamic URLs for configured years
 - Downloads ZIP files
 - Extracts files
@@ -60,17 +61,21 @@ Downloads public tender data from the ANAC website and creates a global dataset.
 - Logs all operations to `01_anac_od_download.log`
 
 ### 01_istat_bdap_od_download.py
+
 Downloads ISTAT and Open BDAP data related to Public Administrations.
 
 **Functionality:**
+
 - Downloads files from ISTAT and Open BDAP
 - Extracts files
 - Moves CSV/XLSX to dedicated folders
 
 ### 02_anac_od_select.py
+
 Filters and processes ANAC data downloaded by the first script.
 
 **Functionality:**
+
 - Filters data according to *anac_od_select.json*
 - Performs a join with PA data from ANAC and Open BDAP
 - Generates regional files according to *anac_od_region.json*
@@ -80,7 +85,9 @@ Filters and processes ANAC data downloaded by the first script.
 ## Configuration Files
 
 ### config/config.yml
+
 Main project parameters:
+
 - `YEAR_START_DOWNLOAD` - Download start year
 - `YEAR_END_DOWNLOAD` - Download end year
 - `ANAC_DYNAMIC_URLS_JSON` - Dynamic URLs file (varies by year/month)
@@ -89,13 +96,16 @@ Main project parameters:
 - Output folder paths
 
 ### *anac_urls_dynamic.json*
+
 Dynamic URLs with placeholders:
+
 - `{YYYY}` - Year (4 digits)
 - `{MM}` - Month (2 digits with leading zero)
 - `{DD}` - Day (2 digits with leading zero)
 - `{dataset-name}` - Dataset name
 
 Example:
+
 ```json
 {
   "cig": ["https://dati.anticorruzione.it/opendata/download/dataset/cig-{YYYY}/filesystem/cig_csv_{YYYY}_{MM}.zip"],
@@ -104,18 +114,27 @@ Example:
 ```
 
 ### *anac_urls_static.json*
+
 Static URLs (files that do not change over time)
 
 ### *anac_od_select.json*
+
 Filters for selecting data of interest from ANAC
 
 ### *anac_od_region.json*
+
 Filters for generating separate CSV files by region
 
+### *anac_prefixes.json*
+
+Contains the file prefix to merge the data
+
 ### *bdap_urls_static.json*
+
 URLs for downloading data from [https://openbdap.rgs.mef.gov.it](https://openbdap.rgs.mef.gov.it)
 
 ### *istat_urls_static.json*
+
 URLs for downloading ISTAT data
 
 ---
@@ -123,17 +142,24 @@ URLs for downloading ISTAT data
 ## Installation
 
 ### Prerequisites
+
 - Python 3.12+
 - pip
 
 ### Procedure
+
 1. Clone the repository
+
 2. Install dependencies:
+
    ```bash
    pip install -r requirements.txt
    ```
+
 3. Configure parameters in `config/config.yml`
+
 4. Run the scripts:
+
    ```bash
    python 01_anac_od_download.py
    python 01_istat_bdap_od_download.py
@@ -141,7 +167,9 @@ URLs for downloading ISTAT data
    ```
 
 ### Logging
+
 The script 01_anac_od_download.py generates a log file with the same name:
+
 - `01_anac_od_download.log` - Tracks all downloaded URLs and errors
 
 ---

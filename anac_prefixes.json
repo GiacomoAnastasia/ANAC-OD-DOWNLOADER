@@ -1,0 +1,26 @@
+{
+  "prefixes": [
+    "aggiudicatari_csv",
+    "aggiudicazioni_csv",
+    "attestazioni-soa_csv",
+    "avvio-contratto_csv",
+    "bandi-cig-modalita-realizzazione_csv",
+    "bandi-cig-tipo-scelta-contraente_csv",
+    "categorie-dpcm-aggregazione_csv",
+    "categorie-opera_csv",
+    "centri-di-costo_csv",
+    "cig_csv",
+    "collaudo_csv",
+    "fine-contratto_csv",
+    "lavorazioni_csv",
+    "misurepremiali-pnrrpnc_csv",
+    "partecipanti_csv",
+    "pubblicazioni_csv",
+    "quadro-economico_csv",
+    "sospensioni_csv",
+    "stati-avanzamento_csv",
+    "stazioni-appaltanti_csv",
+    "subappalti_csv",
+    "varianti_csv"
+  ]
+}

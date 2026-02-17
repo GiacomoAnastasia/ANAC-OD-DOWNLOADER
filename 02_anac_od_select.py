@@ -1,5 +1,3 @@
-# 02_anac_od_select.py
-
 """
 Script name: 01_istat_bdap_od_download.py
 Author: R. Nai
